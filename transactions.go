@@ -14,93 +14,107 @@ import (
 
 const TIMESTAMPLAYOUT = "2006-01-02T15:04:05Z"
 
-type Transaction struct {
-	payer  string
-	points int
-	time   time.Time
+type transaction struct {
+	payer     string
+	points    int
+	timestamp time.Time
 }
 
-type Balance struct {
-	payer  string
-	points int
-}
+type Transaction []transaction
 
-func main() {
-	// 0. check if arguments are valid
-	if len(os.Args) != 3 {
-		log.Fatal("Invalid arguments\nUsage:\n    transactions {points} {csv_path}")
-	}
+func (t Transaction) Len() int           { return len(t) }
+func (t Transaction) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
+func (t Transaction) Less(i, j int) bool { return t[i].timestamp.Before(t[j].timestamp) }
 
-	point_to_spend, err := strconv.Atoi(os.Args[1])
+func read_transactions(filename string) *[]transaction {
+	file, err := os.Open(filename)
 	if err != nil {
-		log.Fatal("{points} should be integer\n Usage:\n    transactions {points} {csv_path}")
+		log.Fatal("Unable to open file")
 	}
-	csv_path := os.Args[2]
-
-	// 1. parse csv
-	file, err := os.Open(csv_path)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	transactions := []Transaction{}
+	defer file.Close()
 
 	parser := csv.NewReader(file)
-	_, err = parser.Read() //skip first line
+	parser.TrimLeadingSpace = true
+	parser.FieldsPerRecord = 3
+
+	_, err = parser.Read()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Unable to read CSV file")
 	}
+
+	var list_transactions []transaction
+
 	for {
 		line, err := parser.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Unable to read CSV file")
 		}
 
+		payer := line[0]
 		points, err := strconv.Atoi(line[1])
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Invalid points in CSV file")
 		}
 
-		time, err := time.Parse(TIMESTAMPLAYOUT, line[2])
+		timestamp, err := time.Parse(time.RFC3339, line[2])
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Invalid timestamp in CSV file")
 		}
 
-		transactions = append(transactions, Transaction{
-			payer:  line[0],
-			points: points,
-			time:   time,
-		})
+		list_transactions = append(list_transactions, transaction{payer, points, timestamp})
 	}
 
-	// 2. sort by timestamp
-	sort.SliceStable(transactions, func(i, j int) bool {
-		return transactions[i].time.Before(transactions[j].time)
-	})
+	return &list_transactions
+}
 
-	// 3. process transactions and spend points
+func spend_points(points_to_spend int, list_transactions *[]transaction) map[string]int {
+	sort.Sort(Transaction(*list_transactions))
+
+	remaining_points := points_to_spend
 	balance := map[string]int{}
 
-	for _, t := range transactions {
+	for _, t := range *list_transactions {
 		if _, ok := balance[t.payer]; !ok {
 			balance[t.payer] = 0
 		}
-		if point_to_spend > 0 {
-			if point_to_spend-t.points > 0 {
-				point_to_spend -= t.points
-			} else {
-				balance[t.payer] = t.points - point_to_spend
-				point_to_spend = 0
-			}
-		} else {
+		if remaining_points <= 0 {
 			balance[t.payer] += t.points
+			continue
+		}
+
+		if remaining_points-t.points > 0 {
+			remaining_points -= t.points
+		} else {
+			balance[t.payer] = t.points - remaining_points
+			remaining_points = 0
 		}
 	}
 
-	// 4. parse output
+	if remaining_points > 0 {
+		fmt.Errorf("Insufficient points to spend: requested=%d, remaining=%d", points_to_spend, remaining_points)
+	}
+
+	return balance
+}
+
+func main() {
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: transactions <points> <filename>")
+		os.Exit(1)
+	}
+
+	points_to_spend, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatal("Invalid points argument")
+	}
+	filename := os.Args[2]
+
+	list_transactions := read_transactions(filename)
+	balance := spend_points(points_to_spend, list_transactions)
+
 	jsonStr, err := json.MarshalIndent(balance, "", "\t")
 	if err != nil {
 		log.Fatal(err)
