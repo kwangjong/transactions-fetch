@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-const TIMESTAMPLAYOUT = "2006-01-02T15:04:05Z"
-
 type transaction struct {
 	payer     string
 	points    int
