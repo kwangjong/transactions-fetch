@@ -18,7 +18,8 @@ To run tests, run the following command:
 go test -v
 ```
 
-## Sample Input
+## Sample Run
+### Input
 ```
 [transactions.csv]
 "payer","points","timestamp"
@@ -28,10 +29,12 @@ go test -v
 "MILLER COORS",10000,"2020-11-01T14:00:00Z"
 "DANNON",300,"2020-10-31T10:00:00Z"
 ```
-
-## Sample Output
 ```
-$ go run transactions 5000 transactions.csv 
+go run transactions 5000 transactions.csv 
+```
+
+### Output
+```
 {
         "DANNON": 1000,
         "MILLER COORS": 5300,
