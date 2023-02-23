@@ -1,0 +1,38 @@
+1. Why did you choose the tools, libraries, and language you used for the coding exercise?
+
+Go is a popular system-level language known for its simplicity, concurrency support, and performance. 
+As I have been coding in Go recently, and I know that fetch also uses Go, I decided to use it for my solution.
+
+I have chosen not to use external third-party libraries to make my code lightweight and easy to deploy. 
+However, it's worth noting that faster CSV and JSON libraries can improve performance.
+
+Although I have not implemented multi-threading features in my program, the Go language is designed to support concurrency, 
+which can further optimize the performance, especially when processing much larger files.
+
+
+
+2. What are the advantages and disadvantages of your solution?
+
+The program can handle large files of transactions as it reads the file line by line instead of loading the entire file into memory. 
+Also, it is broken down into smaller functions that can be easily extended or reused. Lastly, the program provides sufficient 
+error checking and provides useful error messages to help users understand and fix the problems they encounter.
+
+The program uses several data structures (struct, slices, and map) and function calls which causes overhead. 
+It can be optimized further to achieve better speed and memory usage. 
+Also, the program depends on one file format and may not be suitable for some use cases.
+
+Overall, these design choices made the program scalable, modular, and user-friendly but with moderate performance and limited to single file format. 
+
+
+
+3. What has been a favorite school/personal project thus far? What about it that challenged you?
+
+One interesting project that I have been contributing to is OpenLambda, an open-sourced serverless project. 
+Under the supervision of Professor Tyler Caraza-Harter, I have been working on integrating the platform to support Google Cloud Platform. 
+The engineering work has been both fun and challenging, and I am still actively contributing to it.
+
+One of the biggest challenges for me was understanding how the whole system works. Because I had never worked on a distributed system before, 
+and it was my first time using Go, it took some time for me to get up to speed. However, I was able to overcome this challenge by focusing 
+on the smaller tasks I was given, and as I completed each task, I learned more and more about the platform and Go.
+
+I am still actively working on OpenLambda, and I look forward to continuing to contribute to this project throughout the current semester.
