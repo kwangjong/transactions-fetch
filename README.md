@@ -5,7 +5,7 @@ Fetch Coding Assessment Software Engineering Internship - Backend
 To build and run the program, run the following commands:
 ```
 go build
-./transaction <points> <filename>
+./transactions <points> <filename>
 ```
 Or you can run the program without building, using the following command;
 ```
@@ -13,7 +13,7 @@ go run transactions <points> <filename>
 ```
 
 ## Test
-To run test, run the following command:
+To run tests, run the following command:
 ```
 go test -v
 ```
