@@ -8,10 +8,15 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
+
+var MAX_THREAD int = runtime.NumCPU() //# of thread is limited to # of cores
 
 type transaction struct {
 	payer     string
@@ -19,11 +24,21 @@ type transaction struct {
 	timestamp time.Time
 }
 
-type Transaction []transaction
+type Transaction struct {
+	list []transaction
+	sync.Mutex
+}
 
-func (t Transaction) Len() int           { return len(t) }
-func (t Transaction) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
-func (t Transaction) Less(i, j int) bool { return t[i].timestamp.Before(t[j].timestamp) }
+type Parser struct {
+	reader *csv.Reader
+	sync.Mutex
+}
+
+type SortByTimestamp []transaction
+
+func (t SortByTimestamp) Len() int           { return len(t) }
+func (t SortByTimestamp) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
+func (t SortByTimestamp) Less(i, j int) bool { return t[i].timestamp.Before(t[j].timestamp) }
 
 func read_transactions(filename string) (*[]transaction, error) {
 	file, err := os.Open(filename)
@@ -69,8 +84,73 @@ func read_transactions(filename string) (*[]transaction, error) {
 	return &list_transactions, nil
 }
 
+func parse_rountine(list_transactions *Transaction, done *sync.WaitGroup, parser *Parser) error {
+	defer done.Done()
+	for {
+		parser.Lock()
+		line, err := parser.reader.Read()
+		parser.Unlock()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.New("Unable to read CSV file")
+		}
+
+		payer := line[0]
+		points, err := strconv.Atoi(line[1])
+		if err != nil {
+			return errors.New("Invalid points in CSV file")
+		}
+
+		timestamp, err := time.Parse(time.RFC3339, line[2])
+		if err != nil {
+			return errors.New("Invalid timestamp in CSV file")
+		}
+		list_transactions.Lock()
+		list_transactions.list = append(list_transactions.list, transaction{payer, points, timestamp})
+		list_transactions.Unlock()
+	}
+
+	return nil
+}
+
+func read_transactions_multi(filename string) (*[]transaction, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, errors.New("Unable to open file")
+	}
+	defer file.Close()
+
+	parser := &Parser{
+		reader: csv.NewReader(file),
+	}
+
+	parser.reader.TrimLeadingSpace = true
+	parser.reader.FieldsPerRecord = 3
+
+	_, err = parser.reader.Read()
+	if err != nil {
+		return nil, errors.New("Unable to read CSV file")
+	}
+
+	var list_transactions Transaction
+	var done sync.WaitGroup
+
+	for i := 1; i < MAX_THREAD; i += 1 {
+		done.Add(1)
+		go parse_rountine(&list_transactions, &done, parser)
+	}
+
+	done.Add(1)
+	parse_rountine(&list_transactions, &done, parser)
+
+	done.Wait()
+	return &list_transactions.list, nil
+}
+
 func spend_points(points_to_spend int, list_transactions *[]transaction) (map[string]int, error) {
-	sort.Sort(Transaction(*list_transactions))
+	sort.Sort(SortByTimestamp(*list_transactions))
 
 	remaining_points := points_to_spend
 	balance_after_spending := map[string]int{}
@@ -107,7 +187,7 @@ func spend_points(points_to_spend int, list_transactions *[]transaction) (map[st
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: transactions <points> <filename>")
+		fmt.Println("Usage: transactions <points> <filename> --multi-thread=false")
 		os.Exit(1)
 	}
 
@@ -117,7 +197,22 @@ func main() {
 	}
 	filename := os.Args[2]
 
-	list_transactions, err := read_transactions(filename)
+	multi_threading := false
+	if len(os.Args) == 4 {
+		if !strings.Contains(os.Args[3], "--multi-thread=") {
+			fmt.Println("Usage: transactions <points> <filename> --multi-thread=false")
+			os.Exit(1)
+		} else {
+			multi_threading = os.Args[3][14:] == "=true"
+		}
+	}
+
+	var list_transactions *[]transaction
+	if multi_threading {
+		list_transactions, err = read_transactions_multi(filename)
+	} else {
+		list_transactions, err = read_transactions(filename)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
