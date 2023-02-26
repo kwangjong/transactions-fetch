@@ -5,17 +5,24 @@ Fetch Coding Assessment Software Engineering Internship - Backend
 To build and run the program, run the following commands:
 ```
 go build
-./transactions <points> <filename>
+./transactions <points> <filename> --multi-thread=false
 ```
 Or you can run the program without building, using the following command;
 ```
-go run transactions <points> <filename>
+go run transactions <points> <filename> --multi-thread=false
 ```
+\*`multi-thread=true` enables multi-threaded csv reader
 
 ## Test
 To run tests, run the following command:
 ```
 go test -v
+```
+
+## BenchMark
+To run BenchMark, run the following command:
+```
+go test -bench=.
 ```
 
 ## Sample Input
@@ -39,3 +46,14 @@ $ go run transactions 5000 transactions.csv
 }
 ```
 
+## Sample BenchMark
+```
+goos: darwin
+goarch: amd64
+pkg: transactions
+cpu: Intel(R) Core(TM) i5-5250U CPU @ 1.60GHz
+BenchmarkSingleThread-4   	       1	2484050592 ns/op
+BenchmarkMultiThread-4    	       1	3936580385 ns/op
+PASS
+ok  	transactions	6.671s
+```
