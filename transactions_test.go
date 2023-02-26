@@ -14,6 +14,7 @@ const (
 	PATH_VALID         = "transactions1.csv"
 	PATH_REVERSE_ORDER = "transactions2.csv"
 	PATH_INVALID       = "transactions3.csv"
+	PATH_BENCHMARK     = "transactions_benchmark.csv"
 )
 
 var transactions_valid *[]transaction
@@ -81,6 +82,22 @@ func Test_spend_invalid_transaction(t *testing.T) {
 
 	if strings.Contains(err.Error(), "Invalid transaction") {
 		t.Errorf("Wrong Error Thrown: Expected: Insufficient balance Error: %s", err.Error())
+	}
+}
+
+// Benchmark SingleThread: read 100M file
+func BenchmarkSingleThread(b *testing.B) {
+	_, err := read_transactions(filepath.Join(PATH_TEST_DIR, PATH_BENCHMARK))
+	if err != nil {
+		b.Errorf("%v", err)
+	}
+}
+
+// Benchmark MultiThread: read 100M file
+func BenchmarkMultiThread(b *testing.B) {
+	_, err := read_transactions_multi(filepath.Join(PATH_TEST_DIR, PATH_BENCHMARK))
+	if err != nil {
+		b.Errorf("%v", err)
 	}
 }
 
